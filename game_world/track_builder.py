@@ -5,7 +5,7 @@ from turtle import color
 import pygame
 import pygame.locals
 
-from racetrack import RaceTrack, blank_track
+from racetrack import RaceTrack, blank_track, load_track
 
 
 class Button:
@@ -39,13 +39,68 @@ def make_solid_colored_button(
     return Button(x, y, width, height, surface)
 
 
+def click_track(
+    track: RaceTrack,
+    selected_color: int,
+    selected_kind: str,
+    pressed: bool,
+    mx: int,
+    my: int,
+    cursor_size: int,
+    handled_points: set[tuple[int, int]],
+    shift_held: bool,
+):
+    print(shift_held)
+    if not pressed or not track.surface.get_rect().collidepoint(mx, my):
+        return
+    row, col = track.get_grid_coord(mx, my)
+    for r in range(row - cursor_size + 1, row + cursor_size):
+        for c in range(col - cursor_size + 1, col + cursor_size):
+            if (
+                r not in range(track.shape[0])
+                or c not in range(track.shape[1])
+                or (r, c) in handled_points
+            ):
+                continue
+            handled_points.add((r, c))
+            match selected_kind:
+                case "wall":
+                    if selected_color == 0:
+                        track.walls[r, c] = 0
+                    else:
+                        track.walls[r, c] = 1
+                        track.active[r, c] = 1 - int(shift_held)
+                    track.colors[r, c] = selected_color
+                case "button":
+                    if selected_color == 0:
+                        track.buttons[r, c] = 0
+                    else:
+                        track.buttons[r, c] = 1
+                    track.walls[r, c] = 0
+                    track.colors[r, c] = selected_color
+                    track.active[r, c] = 1
+                case "target":
+                    track.target = (r, c)
+                    track.walls[r, c] = 0
+                    track.buttons[r, c] = 0
+                    track.colors[r, c] = 0
+                    track.active[r, c] = 1
+                case "spawn":
+                    track.spawn = (r, c)
+                    track.walls[r, c] = 0
+                    track.buttons[r, c] = 0
+                    track.colors[r, c] = 0
+                    track.active[r, c] = 1
+    track.surface = track.render(track.surface.get_width(), track.surface.get_height())
+
+
 def main():
     fps = 60
     fps_clock = pygame.time.Clock()
     pygame.init()
     screen = pygame.display.set_mode((800, 600))
 
-    track = blank_track((50, 50), (600, 600), 7)
+    track = blank_track((10, 10), (600, 600), 7)
     color_buttons = {
         i: make_solid_colored_button(620, 20 + 50 * (i + 1), 30, 30, color)
         for i, color in track.color_scheme.items()
@@ -54,17 +109,24 @@ def main():
     pygame.draw.circle(circle, "#a4a4a4", (15, 15), 10)
     star_img = pygame.image.load("star.png")
     star_img = pygame.transform.scale(star_img, (25, 25))
+    triangle = pygame.Surface((30, 30))
+    triangle.fill("#ffffff")
+    pygame.draw.polygon(triangle, "#278B00", [(15, 5), (25, 25), (5, 25)])
 
     type_buttons = {
         "wall": make_solid_colored_button(700, 20, 30, 30, pygame.Color("#ffffff")),
         "button": Button(700, 70, 30, 30, circle),
         "target": Button(700, 120, 30, 30, star_img),
+        "spawn": Button(700, 170, 30, 30, triangle),
     }
+
     selected_color = -1
     selected_kind = "wall"
     pressed = False
+    shift_held = False
 
     cursor_size = 1
+    handled_points = set()
 
     while True:
         screen.fill("#A6A6A6")
@@ -73,7 +135,7 @@ def main():
             if event.type == pygame.locals.QUIT:
                 pygame.quit()
                 sys.exit()
-            if event.type == pygame.locals.MOUSEBUTTONDOWN:
+            elif event.type == pygame.locals.MOUSEBUTTONDOWN:
                 pressed = True
                 for i, button in color_buttons.items():
                     if button.point_inside(mx, my):
@@ -81,13 +143,21 @@ def main():
                 for kind, button in type_buttons.items():
                     if button.point_inside(mx, my):
                         selected_kind = kind
-            if event.type == pygame.locals.MOUSEBUTTONUP:
+            elif event.type == pygame.locals.MOUSEBUTTONUP:
                 pressed = False
-            if event.type == pygame.locals.KEYDOWN:
+                handled_points.clear()
+            elif event.type == pygame.locals.KEYDOWN:
                 if event.key == pygame.K_UP:
                     cursor_size += 1
                 elif event.key == pygame.K_DOWN:
                     cursor_size = max(1, cursor_size - 1)
+                elif event.key == pygame.K_RETURN:
+                    track.save("track.pkl")
+                elif event.key == pygame.K_a:
+                    shift_held = True
+            elif event.type == pygame.locals.KEYUP:
+                if event.key == pygame.K_a:
+                    shift_held = False
 
         click_track(
             track,
@@ -97,6 +167,8 @@ def main():
             mx,
             my,
             cursor_size,
+            handled_points,
+            shift_held,
         )
 
         screen.blit(track.surface, (0, 0))
@@ -107,46 +179,6 @@ def main():
 
         pygame.display.flip()
         fps_clock.tick(fps)
-
-
-def click_track(
-    track: RaceTrack,
-    selected_color: int,
-    selected_kind: str,
-    pressed: bool,
-    mx: int,
-    my: int,
-    cursor_size: int,
-):
-    if not pressed or not track.surface.get_rect().collidepoint(mx, my):
-        return
-    row, col = track.get_grid_coord(mx, my)
-    for r in range(row - cursor_size + 1, row + cursor_size):
-        for c in range(col - cursor_size + 1, col + cursor_size):
-            if r not in range(track.shape[0]) or c not in range(track.shape[1]):
-                continue
-            match selected_kind:
-                case "wall":
-                    if selected_color == 0:
-                        track.walls[r, c] = 0
-                    else:
-                        track.walls[r, c] = 1
-                    track.targets[r, c] = 0
-                    track.colors[r, c] = selected_color
-                case "button":
-                    if selected_color == 0:
-                        track.buttons[r, c] = 0
-                    else:
-                        track.buttons[r, c] = 1
-                    track.walls[r, c] = 0
-                    track.targets[r, c] = 0
-                    track.colors[r, c] = selected_color
-                case "target":
-                    track.targets[r, c] = 1 - track.targets[r, c]
-                    track.walls[r, c] = 0
-                    track.buttons[r, c] = 0
-                    track.colors[r, c] = 0
-    track.surface = track.render(track.surface.get_width(), track.surface.get_height())
 
 
 if __name__ == "__main__":
