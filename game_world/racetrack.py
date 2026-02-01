@@ -29,9 +29,9 @@ class RaceTrack:
         self.walls = walls
         self.active = active
         self.buttons = buttons
-        self.color_types = colors
+        self.colors = colors
         self.shape = walls.shape
-        self.colors = {i: pygame.Color(c) for i, c in color_scheme.items()} | {
+        self.color_scheme = {i: pygame.Color(c) for i, c in color_scheme.items()} | {
             -1: pygame.Color(0, 0, 0),
             0: pygame.Color(255, 255, 255),
         }
@@ -49,9 +49,9 @@ class RaceTrack:
             x, y = col * w, row * h
             active = self.active[row, col]
             wall = self.walls[row, col]
-            color_type = self.color_types[row, col]
+            color_type = self.colors[row, col]
             button = self.buttons[row, col]
-            color = self.colors[color_type]
+            color = self.color_scheme[color_type]
             if wall:
                 pygame.draw.rect(surface, color, (x, y, w, h), 0 if active else 5)
             elif button:
@@ -67,7 +67,7 @@ class RaceTrack:
     ) -> tuple[np.ndarray, np.ndarray]:
         output = np.where(
             self.walls
-            & (color is None or self.color_types == color)
+            & (color is None or self.colors == color)
             & (active is None or self.active)
         )
         assert len(output) == 2
@@ -84,6 +84,15 @@ class RaceTrack:
         )
         self.surface = self.render(self.surface.get_width(), self.surface.get_height())
 
+    def get_grid_coord(self, x: float, y: float) -> tuple[int, int]:
+        screen_width, screen_height = (
+            self.surface.get_width(),
+            self.surface.get_height(),
+        )
+        rows, cols = self.shape
+        w, h = screen_width / cols, screen_height / rows
+        return int(y / h), int(x / w)
+
 
 def blank_track(
     grid_size: tuple[int, int], screen_size: tuple[int, int], n_colors: int
@@ -95,4 +104,3 @@ def blank_track(
     targets = np.zeros(grid_size)
     theme = make_color_scheme(n_colors)
     return RaceTrack(walls, active, buttons, colors, targets, screen_size, theme)
-
