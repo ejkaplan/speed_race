@@ -8,13 +8,12 @@ import pygame.locals
 
 from racetrack import RaceTrack, blank_track, load_track
 
-SCREEN_SIZE = (800, 600)
-GRID_SIZE = (15, 20)
-SAVE_FILE_NAME = (
-    "tracks/tree.pkl"  # Where do you want to save this track? (Press 'enter' to save)
-)
+WIDTH = 600
+GRID_SIZE = (15, 10)
+SAVE_FILE_NAME = "tracks/choices.pkl"  # Where do you want to save this track? (Press 'enter' to save)
 STARTING_TRACK_NAME = None  # None if you want to start blank.
 # Hold A to paint in deactivated walls
+# press up and down on arrow keys to increase brush size
 
 
 class Button:
@@ -107,15 +106,16 @@ def main():
     fps = 60
     fps_clock = pygame.time.Clock()
     pygame.init()
-    screen = pygame.display.set_mode((SCREEN_SIZE[0] + 170, SCREEN_SIZE[1]))
+    screen_size = (WIDTH, round(WIDTH * GRID_SIZE[0] / GRID_SIZE[1]))
+    screen = pygame.display.set_mode((screen_size[0] + 170, screen_size[1]))
 
     track = (
         load_track(STARTING_TRACK_NAME)
         if STARTING_TRACK_NAME
-        else blank_track(GRID_SIZE, SCREEN_SIZE, 7)
+        else blank_track(GRID_SIZE, screen_size, 7)
     )
     color_buttons = {
-        i: make_solid_colored_button(SCREEN_SIZE[0] + 30, 20 + 50 * i, 30, 30, color)
+        i: make_solid_colored_button(screen_size[0] + 30, 20 + 50 * i, 30, 30, color)
         for i, color in track.color_scheme.items()
     }
     circle = pygame.Surface((30, 30))
@@ -128,11 +128,11 @@ def main():
 
     type_buttons = {
         "wall": make_solid_colored_button(
-            SCREEN_SIZE[0] + 100, 20, 30, 30, pygame.Color("#ffffff")
+            screen_size[0] + 100, 20, 30, 30, pygame.Color("#ffffff")
         ),
-        "button": Button(SCREEN_SIZE[0] + 100, 70, 30, 30, circle),
-        "target": Button(SCREEN_SIZE[0] + 100, 120, 30, 30, star_img),
-        "spawn": Button(SCREEN_SIZE[0] + 100, 170, 30, 30, triangle),
+        "button": Button(screen_size[0] + 100, 70, 30, 30, circle),
+        "target": Button(screen_size[0] + 100, 120, 30, 30, star_img),
+        "spawn": Button(screen_size[0] + 100, 170, 30, 30, triangle),
     }
 
     selected_color = 1

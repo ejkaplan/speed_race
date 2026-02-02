@@ -79,7 +79,10 @@ class Game:
         else:
             self.turns_without_progress += 1
             if self.turns_without_progress >= self.max_turns_without_progress:
-                return Status.DNF, "Racer spent too many ticks dawdling!"
+                return (
+                    Status.DNF,
+                    f"Racer spent {self.turns_without_progress} ticks dawdling!",
+                )
         if self.track.buttons[self.pos]:
             self.track.toggle(self.track.colors[self.pos])
         if self.pos == self.track.target:

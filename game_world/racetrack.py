@@ -9,12 +9,6 @@ import numpy as np
 Point = tuple[int, int]
 
 
-def make_color_scheme(n: int) -> dict[int, pygame.Color]:
-    colors = [colorsys.hsv_to_rgb(h, 1, 1) for h in np.linspace(0, 1, n-1, False)]
-    colors = [(0, 0, 0)] + [(int(255 * c[0]), int(255 * c[1]), int(255 * c[2])) for c in colors]
-    return {i + 1: pygame.Color(color) for i, color in enumerate(colors)}
-
-
 class RaceTrack:
 
     def __init__(
@@ -26,7 +20,6 @@ class RaceTrack:
         target: Point,
         spawn: Point,
         screen_size: Point,
-        color_scheme: dict[int, pygame.Color],
     ) -> None:
         if not (walls.shape == active.shape == buttons.shape):
             raise ValueError("All map layers must be same shape.")
@@ -35,9 +28,8 @@ class RaceTrack:
         self.buttons = buttons
         self.colors = colors
         self.shape = walls.shape
-        self.color_scheme = {i: pygame.Color(c) for i, c in color_scheme.items()} | {
-            0: pygame.Color(255, 255, 255),
-        }
+        colors_basic = {0: "#ffffff", 1: "#000000", 2:"#d20000", 3: "#de9f00", 4: "#00AE00", 5: "#0000cd", 6: "#8b008b", 7: "#739F9F"}
+        self.color_scheme = {i: pygame.Color(c) for i, c in colors_basic.items()}
         self.spawn = spawn
         self.target = target
         self.surface = self.render(*screen_size)
@@ -52,7 +44,6 @@ class RaceTrack:
             deepcopy(self.target, memo),
             deepcopy(self.spawn, memo),
             deepcopy(self.screen_size, memo),
-            deepcopy(self.color_scheme, memo),
         )
 
     def render(self, width: int, height: int) -> pygame.Surface:
@@ -77,7 +68,7 @@ class RaceTrack:
             color = self.color_scheme[color_type]
             if wall != 0:
                 pygame.draw.rect(
-                    surface, color, (x, y, w + 1, h + 1), 0 if active else 5
+                    surface, color, (x, y, w + 1, h + 1), 0 if active else int(0.2*w)
                 )
             elif button:
                 pygame.draw.circle(
@@ -87,6 +78,7 @@ class RaceTrack:
                 surface.blit(star_img, (x + 0.1 * w, y + 0.1 * h))
             if (row, col) == self.spawn:
                 surface.blit(triangle, (x + 0.1 * w, y + 0.1 * h))
+            pygame.draw.rect(surface, "#000000", (x, y, w + 1, h + 1), 2)
         return surface
 
     def find_wall_locations_np(
@@ -180,7 +172,6 @@ class RaceTrack:
             self.target,
             self.spawn,
             self.screen_size,
-            self.color_scheme,
         )
         with open(filename, "wb") as f:
             pickle.dump(save_data, f)
@@ -201,7 +192,6 @@ def blank_track(
     buttons = np.zeros(grid_size)
     active = np.ones(grid_size)
     colors = np.zeros(grid_size)
-    theme = make_color_scheme(n_colors)
     return RaceTrack(
         walls,
         active,
@@ -210,5 +200,4 @@ def blank_track(
         (grid_size[0] - 1, grid_size[1] - 1),
         (0, 0),
         screen_size,
-        theme,
     )
