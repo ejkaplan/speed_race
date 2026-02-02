@@ -1,3 +1,4 @@
+from copy import deepcopy
 from enum import Enum
 import sys
 from time import monotonic
@@ -6,7 +7,8 @@ from typing import Callable
 import pygame
 import pygame.locals
 
-from game_world.racetrack import RaceTrack, bresenham
+from game_world.racetrack import RaceTrack, bresenham, load_track
+from random_bot import random_move
 
 
 Point = tuple[int, int]
@@ -14,10 +16,12 @@ Player = Callable[
     [Point, Point, RaceTrack], Point
 ]  # (location, velocity, track) -> change_in_velocity
 
+
 class Status(Enum):
     ONGOING = 1
     FINISH = 2
     DNF = 3
+
 
 def grid_dist(a: Point, b: Point) -> int:
     return len(list(bresenham(*a, *b)))
@@ -25,33 +29,45 @@ def grid_dist(a: Point, b: Point) -> int:
 
 class Game:
 
-    def __init__(self, player: Player, track: RaceTrack, time: float, delay: float, max_turns_without_progress: int = 100) -> None:
+    def __init__(
+        self,
+        player: Player,
+        track: RaceTrack,
+        time: float,
+        delay: float,
+        max_turns_without_progress: int = 100,
+    ) -> None:
         self.player = player
-        self.track = track
+        self.track = deepcopy(track)
         self.time = time
         self.delay = delay
         self.turns_without_progress = 0
         self.max_turns_without_progress = max_turns_without_progress
         self.pos = track.spawn
         self.vel = (0, 0)
-        self.min_dist = float('inf')
-        self.path = [self.pos]
+        self.min_dist = float("inf")
+        self.history = []
 
-    def tick(self) -> tuple[Status, str]:
+    def tick(self) -> tuple[Status, str, Point]:
         start_time = monotonic()
         action = self.player(self.pos, self.vel, self.track)
         time_taken = monotonic() - start_time
         self.time -= time_taken
+        self.history.append(action)
         if self.time < 0:
-            return Status.DNF, "Timed Out"
+            return Status.DNF, "Timed Out", action
         self.time += min(time_taken, self.delay)
+        self.vel = (self.vel[0] + action[0], self.vel[1] + action[1])
         if not (-1 <= action[0] <= 1 and -1 <= action[1] <= 1):
-            return Status.DNF, f"Racer made illegal move {action}!"
-        vel = (self.vel[0] + action[0], self.vel[1] + action[1])
-        next_pos = (self.pos[0] + vel[0], self.pos[1] + vel[1])
+            return Status.DNF, f"Racer made illegal move {action}!", action
+        next_pos = (self.pos[0] + self.vel[0], self.pos[1] + self.vel[1])
+        if not (
+            next_pos[0] in range(self.track.shape[0])
+            and next_pos[1] in range(self.track.shape[1])
+        ):
+            return Status.DNF, "Racer went out of bounds!", action
         if not self.track.line_traversable(self.pos, next_pos):
-            self.path.append(next_pos)
-            return Status.DNF, f"Racer crashed into a wall!"
+            return Status.DNF, "Racer crashed into a wall!", action
         new_dist = grid_dist(self.pos, self.track.target)
         if new_dist < self.min_dist:
             self.min_dist = new_dist
@@ -59,24 +75,85 @@ class Game:
         else:
             self.turns_without_progress += 1
             if self.turns_without_progress >= self.max_turns_without_progress:
-                return Status.DNF, "Racer spent too many ticks dawdling!"
+                return Status.DNF, "Racer spent too many ticks dawdling!", action
         self.pos = next_pos
-        self.path.append(self.pos)
+        if self.track.buttons[self.pos]:
+            self.track.toggle(self.track.colors[self.pos])
         if self.pos == self.track.target:
-            return Status.FINISH, "Racer made it to the finish line!"
-        return Status.ONGOING, "Still racing."
-        
+            return Status.FINISH, "Racer made it to the finish line!", action
+        return Status.ONGOING, "Still racing.", action
 
-def play_game(self) -> tuple[Status, str]:
-    status, msg = Status.ONGOING, "Just Started."
-    while status == Status.ONGOING:
-        status, msg = self.tick()
-    return status, msg
+    def play_game(self) -> tuple[Status, str]:
+        status, msg = Status.ONGOING, "Just Started."
+        while status == Status.ONGOING:
+            status, msg, action = self.tick()
+        return status, msg
 
+
+def replay_player_generator(history: list[Point]):
+    def replay(loc: Point, vel: Point, track: RaceTrack) -> Point:
+        if history:
+            return history.pop(0)
+        return (0, 0)
+
+    return replay
+
+
+def interpolate(start: Point, end: Point, p: float) -> tuple[float, float]:
+    return (start[0] * (1 - p) + end[0] * p, start[1] * (1 - p) + end[1] * p)
+
+
+def watch_replay(track: RaceTrack, history: list[Point], time_per_move: float):
+    cell_w = track.screen_size[0] / track.shape[1]
+    cell_h = track.screen_size[1] / track.shape[0]
+
+    replay_player = replay_player_generator(history)
+    game = Game(replay_player, track, float("inf"), 0)
+    dt = 0
+    p = 1
+    move_start, move_end = game.pos, game.pos
+
+    fps = 60
+    fps_clock = pygame.time.Clock()
+    pygame.init()
+    screen = pygame.display.set_mode(track.screen_size)
+    done = False
+
+    while True:
+
+        p = min(p + dt / time_per_move, 1)
+        if p >= 1:
+            if done:
+                print(msg)
+                break
+            status, msg, action = game.tick()
+            if status != Status.ONGOING:
+                done = True
+            move_start, move_end = move_end, (
+                move_end[0] + game.vel[0],
+                move_end[1] + game.vel[1],
+            )
+            p = 0
+        player_location = interpolate(move_start, move_end, p)
+        x, y = (player_location[1] + 0.5) * cell_w, (player_location[0] + 0.5) * cell_h
+        screen.blit(track.surface, (0, 0))
+        pygame.draw.circle(screen, "#000000", (x, y), 0.2 * min(cell_w, cell_h))
+        pygame.draw.circle(screen, "#FFFFFF", (x, y), 0.2 * min(cell_w, cell_h), 2)
+
+        for event in pygame.event.get():
+            if event.type == pygame.locals.QUIT:
+                pygame.quit()
+                sys.exit()
+
+        pygame.display.flip()
+        dt = fps_clock.tick(fps) / 1000
 
 
 def main():
-    print(list(bresenham(*(0, 0), *(5, 19))))
+    track = load_track("empty.pkl")
+    game = Game(random_move, track, 10, 5)
+    game.play_game()
+    watch_replay(track, game.history, 1)
 
 
 if __name__ == "__main__":

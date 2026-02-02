@@ -1,4 +1,5 @@
 import colorsys
+from copy import deepcopy
 from itertools import product
 import pickle
 from typing import Iterable
@@ -70,6 +71,18 @@ class RaceTrack:
         self.target = target
         self.surface = self.render(*screen_size)
         self.screen_size = screen_size
+
+    def __deepcopy__(self, memo) -> "RaceTrack":
+        return RaceTrack(
+            deepcopy(self.walls, memo),
+            deepcopy(self.active, memo),
+            deepcopy(self.buttons, memo),
+            deepcopy(self.colors, memo),
+            deepcopy(self.target, memo),
+            deepcopy(self.spawn, memo),
+            deepcopy(self.screen_size, memo),
+            deepcopy(self.color_scheme, memo),
+        )
 
     def render(self, width: int, height: int) -> pygame.Surface:
         surface = pygame.Surface((width, height))
