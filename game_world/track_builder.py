@@ -1,3 +1,4 @@
+from json import load
 import select
 import sys
 from turtle import color
@@ -6,6 +7,12 @@ import pygame
 import pygame.locals
 
 from racetrack import RaceTrack, blank_track, load_track
+
+SCREEN_SIZE = (600, 600)
+GRID_SIZE = (9, 9)
+SAVE_FILE_NAME = "tracks/advanced_buttons.pkl"  # Where do you want to save this track? (Press 'enter' to save)
+STARTING_TRACK_NAME = None  # None if you want to start blank.
+# Hold A to paint in deactivated walls
 
 
 class Button:
@@ -50,7 +57,6 @@ def click_track(
     handled_points: set[tuple[int, int]],
     shift_held: bool,
 ):
-    print(shift_held)
     if not pressed or not track.surface.get_rect().collidepoint(mx, my):
         return
     row, col = track.get_grid_coord(mx, my)
@@ -71,6 +77,7 @@ def click_track(
                         track.walls[r, c] = 1
                         track.active[r, c] = 1 - int(shift_held)
                     track.colors[r, c] = selected_color
+                    track.buttons[r, c] = 0
                 case "button":
                     if selected_color == 0:
                         track.buttons[r, c] = 0
@@ -98,11 +105,15 @@ def main():
     fps = 60
     fps_clock = pygame.time.Clock()
     pygame.init()
-    screen = pygame.display.set_mode((800, 600))
+    screen = pygame.display.set_mode((SCREEN_SIZE[0] + 170, SCREEN_SIZE[1]))
 
-    track = blank_track((10, 10), (600, 600), 7)
+    track = (
+        load_track(STARTING_TRACK_NAME)
+        if STARTING_TRACK_NAME
+        else blank_track(GRID_SIZE, SCREEN_SIZE, 7)
+    )
     color_buttons = {
-        i: make_solid_colored_button(620, 20 + 50 * (i + 1), 30, 30, color)
+        i: make_solid_colored_button(SCREEN_SIZE[0] + 30, 20 + 50 * i, 30, 30, color)
         for i, color in track.color_scheme.items()
     }
     circle = pygame.Surface((30, 30))
@@ -114,13 +125,15 @@ def main():
     pygame.draw.polygon(triangle, "#278B00", [(15, 5), (25, 25), (5, 25)])
 
     type_buttons = {
-        "wall": make_solid_colored_button(700, 20, 30, 30, pygame.Color("#ffffff")),
-        "button": Button(700, 70, 30, 30, circle),
-        "target": Button(700, 120, 30, 30, star_img),
-        "spawn": Button(700, 170, 30, 30, triangle),
+        "wall": make_solid_colored_button(
+            SCREEN_SIZE[0] + 100, 20, 30, 30, pygame.Color("#ffffff")
+        ),
+        "button": Button(SCREEN_SIZE[0] + 100, 70, 30, 30, circle),
+        "target": Button(SCREEN_SIZE[0] + 100, 120, 30, 30, star_img),
+        "spawn": Button(SCREEN_SIZE[0] + 100, 170, 30, 30, triangle),
     }
 
-    selected_color = -1
+    selected_color = 1
     selected_kind = "wall"
     pressed = False
     shift_held = False
@@ -152,7 +165,8 @@ def main():
                 elif event.key == pygame.K_DOWN:
                     cursor_size = max(1, cursor_size - 1)
                 elif event.key == pygame.K_RETURN:
-                    track.save("track.pkl")
+                    track.save(SAVE_FILE_NAME)
+                    print(f"Saved track to {SAVE_FILE_NAME}")
                 elif event.key == pygame.K_a:
                     shift_held = True
             elif event.type == pygame.locals.KEYUP:

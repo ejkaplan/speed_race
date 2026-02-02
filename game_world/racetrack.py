@@ -15,34 +15,6 @@ def make_color_scheme(n: int) -> dict[int, pygame.Color]:
     return {i + 1: pygame.Color(color) for i, color in enumerate(colors)}
 
 
-def bresenham(x0: int, y0: int, x1: int, y1: int) -> Iterable[Point]:
-    # Taken from https://github.com/encukou/bresenham/tree/master
-    dx = x1 - x0
-    dy = y1 - y0
-
-    x_sign = 1 if dx > 0 else -1
-    y_sign = 1 if dy > 0 else -1
-
-    dx = abs(dx)
-    dy = abs(dy)
-
-    if dx > dy:
-        xx, xy, yx, yy = x_sign, 0, 0, y_sign
-    else:
-        dx, dy = dy, dx
-        xx, xy, yx, yy = 0, y_sign, x_sign, 0
-
-    D = 2 * dy - dx
-    y = 0
-
-    for x in range(dx + 1):
-        yield x0 + x * xx + y * yx, y0 + x * xy + y * yy
-        if D >= 0:
-            y += 1
-            D -= 2 * dx
-        D += 2 * dy
-
-
 class RaceTrack:
 
     def __init__(
@@ -64,7 +36,6 @@ class RaceTrack:
         self.colors = colors
         self.shape = walls.shape
         self.color_scheme = {i: pygame.Color(c) for i, c in color_scheme.items()} | {
-            -1: pygame.Color(0, 0, 0),
             0: pygame.Color(255, 255, 255),
         }
         self.spawn = spawn
@@ -103,8 +74,10 @@ class RaceTrack:
             color_type = self.colors[row, col]
             button = self.buttons[row, col]
             color = self.color_scheme[color_type]
-            if wall:
-                pygame.draw.rect(surface, color, (x, y, w, h), 0 if active else 5)
+            if wall != 0:
+                pygame.draw.rect(
+                    surface, color, (x, y, w + 1, h + 1), 0 if active else 5
+                )
             elif button:
                 pygame.draw.circle(
                     surface, color, (x + w / 2, y + h / 2), 0.4 * min(w, h)
@@ -118,22 +91,19 @@ class RaceTrack:
     def find_wall_locations(
         self, color: int | None = None, active: bool | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
-        output = np.where(
-            self.walls
-            & (color is None or self.colors == color)
-            & (active is None or self.active)
-        )
+        color_mask = (
+            self.colors == color if color is not None else np.ones(self.shape)
+        ).astype(int)
+        active_mask = (
+            self.active == active if active is not None else np.ones(self.shape)
+        ).astype(int)
+        output = np.where(self.walls.astype(int) & color_mask & active_mask)
         assert len(output) == 2
         return output
 
     def find_traversable_cells(self) -> set[Point]:
         output = np.where((self.walls == 0).astype(int) | (1 - self.active).astype(int))
         return set(zip(output[0].astype(int), output[1].astype(int)))
-
-    def line_traversable(self, start: Point, end: Point) -> bool:
-        safe_cells = self.find_traversable_cells()
-        line = set(bresenham(*start, *end))
-        return safe_cells >= line
 
     def toggle(self, color: int) -> None:
         self.active[self.find_wall_locations(color)] = (
@@ -191,12 +161,3 @@ def blank_track(
         screen_size,
         theme,
     )
-
-
-def main():
-    track = load_track("track.pkl")
-    print(track.line_traversable((0, 0), (0, 9)))
-
-
-if __name__ == "__main__":
-    main()
