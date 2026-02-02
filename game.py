@@ -10,6 +10,11 @@ import pygame.locals
 from game_world.racetrack import RaceTrack, load_track
 from random_bot import random_move
 
+TRACK = load_track("./tracks/trivial.pkl")
+PLAYER = random_move
+REPLAY_SPEED = 1.0  # seconds per move in the replay. (lower is faster)
+SHOW_REPLAY = True
+
 
 Point = tuple[int, int]
 Player = Callable[
@@ -78,7 +83,10 @@ class Game:
         if self.track.buttons[self.pos]:
             self.track.toggle(self.track.colors[self.pos])
         if self.pos == self.track.target:
-            return Status.FINISH, "Racer made it to the finish line!"
+            return (
+                Status.FINISH,
+                f"Racer made it to the finish line in {len(self.history)} steps!",
+            )
         return Status.ONGOING, "Still racing."
 
     def play_game(self) -> tuple[Status, str]:
@@ -124,9 +132,8 @@ def watch_replay(track: RaceTrack, history: list[Point], time_per_move: float):
         if p >= 1:
             track_surface = game.track.surface
             if done:
-                print(msg)
                 break
-            status, msg = game.tick()
+            status, _ = game.tick()
             if status != Status.ONGOING:
                 done = True
             move_start, move_end = move_end, game.pos
@@ -147,11 +154,11 @@ def watch_replay(track: RaceTrack, history: list[Point], time_per_move: float):
 
 
 def main():
-    track = load_track("./tracks/basic_buttons.pkl")
-    game = Game(random_move, track, 10, 5)
-    status, msg = game.play_game()
+    game = Game(PLAYER, TRACK, 10, 5)
+    _, msg = game.play_game()
+    if SHOW_REPLAY:
+        watch_replay(TRACK, game.history, REPLAY_SPEED)
     print(msg)
-    watch_replay(track, game.history, 0.1)
 
 
 if __name__ == "__main__":

@@ -8,9 +8,11 @@ import pygame.locals
 
 from racetrack import RaceTrack, blank_track, load_track
 
-SCREEN_SIZE = (600, 600)
-GRID_SIZE = (9, 9)
-SAVE_FILE_NAME = "tracks/advanced_buttons.pkl"  # Where do you want to save this track? (Press 'enter' to save)
+SCREEN_SIZE = (800, 600)
+GRID_SIZE = (15, 20)
+SAVE_FILE_NAME = (
+    "tracks/tree.pkl"  # Where do you want to save this track? (Press 'enter' to save)
+)
 STARTING_TRACK_NAME = None  # None if you want to start blank.
 # Hold A to paint in deactivated walls
 

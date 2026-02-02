@@ -10,8 +10,8 @@ Point = tuple[int, int]
 
 
 def make_color_scheme(n: int) -> dict[int, pygame.Color]:
-    colors = [colorsys.hsv_to_rgb(h, 1, 1) for h in np.linspace(0, 1, n, False)]
-    colors = [(int(255 * c[0]), int(255 * c[1]), int(255 * c[2])) for c in colors]
+    colors = [colorsys.hsv_to_rgb(h, 1, 1) for h in np.linspace(0, 1, n-1, False)]
+    colors = [(0, 0, 0)] + [(int(255 * c[0]), int(255 * c[1]), int(255 * c[2])) for c in colors]
     return {i + 1: pygame.Color(color) for i, color in enumerate(colors)}
 
 
@@ -56,6 +56,7 @@ class RaceTrack:
         )
 
     def render(self, width: int, height: int) -> pygame.Surface:
+        """Draw out the track in its current state"""
         surface = pygame.Surface((width, height))
         surface.fill("#ffffff")
         rows, cols = self.shape
@@ -88,26 +89,76 @@ class RaceTrack:
                 surface.blit(triangle, (x + 0.1 * w, y + 0.1 * h))
         return surface
 
-    def find_wall_locations(
+    def find_wall_locations_np(
         self, color: int | None = None, active: bool | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Return the locations of all the walls.
+
+        Args:
+            color (int | None, optional): The color of wall you want to find. Defaults to None - if none returns all walls.
+            active (bool | None, optional): Do you want only active walls, or inactive. Defaults to None - if none, returns all walls
+
+        Returns:
+            tuple[np.ndarray, np.ndarray]: A tuple containing an array of all the row numbers and an array of all the column numbers
+        """
         color_mask = (
-            self.colors == color if color is not None else np.ones(self.shape)
+            (self.colors == color) if color is not None else np.ones(self.shape)
         ).astype(int)
         active_mask = (
-            self.active == active if active is not None else np.ones(self.shape)
+            (self.active == active) if active is not None else np.ones(self.shape)
         ).astype(int)
         output = np.where(self.walls.astype(int) & color_mask & active_mask)
         assert len(output) == 2
         return output
 
+    def find_wall_locations(
+        self, color: int | None = None, active: bool | None = None
+    ) -> set[Point]:
+        """
+        Return the locations of all the walls.
+
+        Args:
+            color (int | None, optional): The color of wall you want to find. Defaults to None - if none returns all walls.
+            active (bool | None, optional): Do you want only active walls, or inactive. Defaults to None - if none, returns all walls
+
+        Returns:
+            set[Point]: A set containing the coordinates (row, col) of walls with the criteria given.
+        """
+        rows, cols = self.find_wall_locations_np(color, active)
+        return set(zip(rows.astype(int), cols.astype(int)))
+
+    def find_buttons(self, color: int | None = None) -> set[Point]:
+        """
+        Find the locations of the buttons
+
+        Args:
+            color (int | None, optional): The color of button you want to find. Defaults to None.
+                Returns all buttons of any color if None
+
+        Returns:
+            set[Point]: A set containing the coordinates (row, col) of the buttons.
+        """
+        color_mask = (
+            (self.colors == color) if color is not None else np.ones(self.shape)
+        ).astype(int)
+        rows, cols = np.where(self.buttons.astype(int) & color_mask)
+        return set(zip(rows.astype(int), cols.astype(int)))
+
     def find_traversable_cells(self) -> set[Point]:
+        """
+        Return a set of all the coordinates (row, col) where your bot can currently exist.
+        Buttons and deactivated walls are included in this set.
+
+        Returns:
+            set[Point]: The locations where you can currently walk.
+        """
         output = np.where((self.walls == 0).astype(int) | (1 - self.active).astype(int))
         return set(zip(output[0].astype(int), output[1].astype(int)))
 
     def toggle(self, color: int) -> None:
-        self.active[self.find_wall_locations(color)] = (
-            1 - self.active[self.find_wall_locations(color)]
+        self.active[self.find_wall_locations_np(color)] = (
+            1 - self.active[self.find_wall_locations_np(color)]
         )
         self.surface = self.render(self.surface.get_width(), self.surface.get_height())
 
