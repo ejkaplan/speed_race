@@ -1,7 +1,4 @@
-from json import load
-import select
 import sys
-from turtle import color
 
 import pygame
 import pygame.locals
@@ -10,7 +7,7 @@ from racetrack import RaceTrack, blank_track, load_track
 
 WIDTH = 600
 GRID_SIZE = (15, 10)
-SAVE_FILE_NAME = "tracks/choices.pkl"  # Where do you want to save this track? (Press 'enter' to save)
+SAVE_FILE_NAME = "tracks/your_map.pkl"  # Where do you want to save this track? (Press 'enter' to save)
 STARTING_TRACK_NAME = None  # None if you want to start blank.
 # Hold A to paint in deactivated walls
 # press up and down on arrow keys to increase brush size
