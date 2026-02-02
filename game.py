@@ -10,9 +10,9 @@ import pygame.locals
 from game_world.racetrack import RaceTrack, load_track
 from random_bot import random_move
 
-TRACK = load_track("./tracks/time_saver.pkl")
+TRACK = load_track("./tracks/trivial.pkl")
 PLAYER = random_move
-REPLAY_SPEED = 2  # seconds per move in the replay. (lower is faster)
+REPLAY_SPEED = 0.1  # seconds per move in the replay. (lower is faster)
 SHOW_REPLAY = True
 
 
