@@ -1,8 +1,6 @@
-import colorsys
 from copy import deepcopy
 from itertools import product
 import pickle
-from typing import Iterable
 import pygame
 import numpy as np
 
@@ -28,7 +26,16 @@ class RaceTrack:
         self.buttons = buttons
         self.colors = colors
         self.shape = walls.shape
-        colors_basic = {0: "#ffffff", 1: "#000000", 2:"#d20000", 3: "#de9f00", 4: "#00AE00", 5: "#0000cd", 6: "#8b008b", 7: "#739F9F"}
+        colors_basic = {
+            0: "#ffffff",
+            1: "#000000",
+            2: "#d20000",
+            3: "#de9f00",
+            4: "#00AE00",
+            5: "#0000cd",
+            6: "#8b008b",
+            7: "#739F9F",
+        }
         self.color_scheme = {i: pygame.Color(c) for i, c in colors_basic.items()}
         self.spawn = spawn
         self.target = target
@@ -68,7 +75,7 @@ class RaceTrack:
             color = self.color_scheme[color_type]
             if wall != 0:
                 pygame.draw.rect(
-                    surface, color, (x, y, w + 1, h + 1), 0 if active else int(0.2*w)
+                    surface, color, (x, y, w + 1, h + 1), 0 if active else int(0.2 * w)
                 )
             elif button:
                 pygame.draw.circle(
