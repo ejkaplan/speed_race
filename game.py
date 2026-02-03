@@ -9,8 +9,9 @@ import pygame.locals
 
 from game_world.racetrack import RaceTrack, load_track
 from random_bot import random_move
+import traceback
 
-TRACK = load_track("./tracks/no_choice.pkl")
+TRACK = load_track("./tracks/itsatrap.pkl")
 PLAYER = random_move
 REPLAY_SPEED = 0.5  # seconds per move in the replay. (lower is faster)
 SHOW_REPLAY = True
@@ -57,14 +58,18 @@ class Game:
             self.track.toggle(self.track.button_colors[self.pos])
         track_copy = deepcopy(self.track)
         start_time = monotonic()
-        action = self.player(self.pos, track_copy)
+        try:
+            action = self.player(self.pos, track_copy)
+        except Exception as e:
+            return Status.DNF, f'Racer crashed with the following error message:\n{traceback.format_exc()}'
         time_taken = monotonic() - start_time
         self.time -= time_taken
         self.history.append(action)
         if self.time < 0:
             return Status.DNF, "Timed Out"
         self.time += min(time_taken, self.delay)
-        if not (-1 <= action[0] <= 1 and -1 <= action[1] <= 1) or 0 not in action:
+        options = {(1, 0), (-1, 0), (0, 1), (0, -1)}
+        if action not in options:
             return Status.DNF, f"Racer made illegal move {action}!"
         self.pos = (self.pos[0] + action[0], self.pos[1] + action[1])
         if not (

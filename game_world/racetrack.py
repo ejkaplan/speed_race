@@ -85,7 +85,7 @@ class RaceTrack:
                     surface,
                     wall_color,
                     (x, y, w + 1, h + 1),
-                    0 if active else int(0.1 * min(w, h)),
+                    0 if active else int(0.2 * min(w, h)),
                 )
             if (row, col) == self.spawn:
                 surface.blit(triangle, (x + 0.1 * w, y + 0.1 * h))
