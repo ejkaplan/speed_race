@@ -39,7 +39,6 @@ class RaceTrack:
         self.color_scheme = {i: pygame.Color(c) for i, c in colors_basic.items()}
         self.spawn = spawn
         self.target = target
-        self.surface = self.render(*screen_size)
         self.screen_size = screen_size
 
     def __deepcopy__(self, memo) -> "RaceTrack":
@@ -53,16 +52,16 @@ class RaceTrack:
             deepcopy(self.screen_size, memo),
         )
 
-    def render(self, width: int, height: int) -> pygame.Surface:
+    def render(self) -> pygame.Surface:
         """Draw out the track in its current state"""
-        surface = pygame.Surface((width, height))
+        surface = pygame.Surface(self.screen_size)
         surface.fill("#ffffff")
         rows, cols = self.shape
-        w, h = width / cols, height / rows
+        w, h = self.screen_size[0] / cols, self.screen_size[1] / rows
         star_img = pygame.image.load("star.png")
         star_img = pygame.transform.scale(star_img, (0.8 * w, 0.8 * h))
-        triangle = pygame.Surface((0.8 * w, 0.8 * w))
-        triangle.fill("#ffffff")
+        triangle = pygame.Surface((0.8 * w, 0.8 * w), pygame.SRCALPHA, 32)
+        triangle = triangle.convert_alpha()
         pygame.draw.polygon(
             triangle, "#278B00", [(0.4 * w, 0), (0.8 * w, 0.8 * h), (0, 0.8 * h)]
         )
@@ -75,16 +74,26 @@ class RaceTrack:
             color = self.color_scheme[color_type]
             if wall != 0:
                 pygame.draw.rect(
-                    surface, color, (x, y, w + 1, h + 1), 0 if active else int(0.2 * w)
+                    surface,
+                    color,
+                    (x, y, w + 1, h + 1),
+                    0 if active else int(0.1 * min(w, h)),
                 )
-            elif button:
-                pygame.draw.circle(
-                    surface, color, (x + w / 2, y + h / 2), 0.4 * min(w, h)
-                )
-            elif (row, col) == self.target:
-                surface.blit(star_img, (x + 0.1 * w, y + 0.1 * h))
             if (row, col) == self.spawn:
                 surface.blit(triangle, (x + 0.1 * w, y + 0.1 * h))
+            if button:
+                pygame.draw.circle(
+                    surface, color, (x + w / 2, y + h / 2), 0.3 * min(w, h)
+                )
+                pygame.draw.circle(
+                    surface,
+                    "#ffffff",
+                    (x + w / 2, y + h / 2),
+                    0.3 * min(w, h),
+                    int(0.05 * min(w, h)),
+                )
+            if (row, col) == self.target:
+                surface.blit(star_img, (x + 0.1 * w, y + 0.1 * h))
             pygame.draw.rect(surface, "#000000", (x, y, w + 1, h + 1), 2)
         return surface
 
@@ -159,15 +168,10 @@ class RaceTrack:
         self.active[self.find_wall_locations_np(color)] = (
             1 - self.active[self.find_wall_locations_np(color)]
         )
-        self.surface = self.render(self.surface.get_width(), self.surface.get_height())
 
     def get_grid_coord(self, x: float, y: float) -> tuple[int, int]:
-        screen_width, screen_height = (
-            self.surface.get_width(),
-            self.surface.get_height(),
-        )
         rows, cols = self.shape
-        w, h = screen_width / cols, screen_height / rows
+        w, h = self.screen_size[0] / cols, self.screen_size[1] / rows
         return int(y / h), int(x / w)
 
     def save(self, filename: str) -> None:
@@ -188,7 +192,6 @@ def load_track(filename: str) -> RaceTrack:
     with open(filename, "rb") as f:
         data = pickle.load(f)
     track = RaceTrack(*data)
-    track.surface = track.render(*track.screen_size)
     return track
 
 

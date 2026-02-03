@@ -10,9 +10,9 @@ import pygame.locals
 from game_world.racetrack import RaceTrack, load_track
 from random_bot import random_move
 
-TRACK = load_track("./tracks/trivial.pkl")
+TRACK = load_track("./tracks/self_sealing.pkl")
 PLAYER = random_move
-REPLAY_SPEED = 0.1  # seconds per move in the replay. (lower is faster)
+REPLAY_SPEED = 0.5  # seconds per move in the replay. (lower is faster)
 SHOW_REPLAY = True
 
 
@@ -53,9 +53,12 @@ class Game:
         self.history = []
 
     def tick(self) -> tuple[Status, str]:
+        if self.track.buttons[self.pos]:
+            self.track.toggle(self.track.colors[self.pos])
         track_copy = deepcopy(self.track)
         start_time = monotonic()
         action = self.player(self.pos, track_copy)
+        print(action)
         time_taken = monotonic() - start_time
         self.time -= time_taken
         self.history.append(action)
@@ -83,8 +86,6 @@ class Game:
                     Status.DNF,
                     f"Racer spent {self.turns_without_progress} ticks dawdling!",
                 )
-        if self.track.buttons[self.pos]:
-            self.track.toggle(self.track.colors[self.pos])
         if self.pos == self.track.target:
             return (
                 Status.FINISH,
@@ -127,13 +128,13 @@ def watch_replay(track: RaceTrack, history: list[Point], time_per_move: float):
     pygame.init()
     screen = pygame.display.set_mode(track.screen_size)
     done = False
-    track_surface = game.track.surface
+    track_surface = game.track.render()
 
     while True:
 
         p = min(p + dt / time_per_move, 1)
+        track_surface = game.track.render()
         if p >= 1:
-            track_surface = game.track.surface
             if done:
                 break
             status, _ = game.tick()
