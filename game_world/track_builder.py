@@ -6,9 +6,9 @@ import pygame.locals
 from racetrack import RaceTrack, blank_track, load_track
 
 WIDTH = 600
-GRID_SIZE = (5, 6)
-SAVE_FILE_NAME = "tracks/self_sealing.pkl"  # Where do you want to save this track? (Press 'enter' to save)
-STARTING_TRACK_NAME = "tracks/self_sealing.pkl"  # None if you want to start blank.
+GRID_SIZE = (5, 5)
+SAVE_FILE_NAME = "tracks/railgun.pkl"  # Where do you want to save this track? (Press 'enter' to save)
+STARTING_TRACK_NAME = None  # None if you want to start blank.
 # Hold A to paint in deactivated walls
 # press up and down on arrow keys to increase brush size
 
@@ -71,11 +71,14 @@ def click_track(
                         track.active[r, c] = 1 - int(shift_held)
                     else:
                         track.walls[r, c] = 0
-                        track.buttons[r, c] = 0
-                    track.colors[r, c] = selected_color
+                    track.wall_colors[r, c] = selected_color
                 case "button":
                     track.buttons[r, c] = 0 if selected_color == 0 else 1
-                    track.colors[r, c] = track.colors[r, c] if selected_color == 0 else selected_color
+                    track.button_colors[r, c] = (
+                        track.button_colors[r, c]
+                        if selected_color == 0
+                        else selected_color
+                    )
                 case "target":
                     track.target = (r, c)
                 case "spawn":
@@ -87,7 +90,7 @@ def main():
     fps_clock = pygame.time.Clock()
     pygame.init()
     screen_size = (WIDTH, round(WIDTH * GRID_SIZE[0] / GRID_SIZE[1]))
-    screen = pygame.display.set_mode((screen_size[0] + 170, screen_size[1]))
+    screen = pygame.display.set_mode((screen_size[0] + 170, max(screen_size[1], 450)))
 
     track = (
         load_track(STARTING_TRACK_NAME)

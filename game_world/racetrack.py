@@ -14,17 +14,25 @@ class RaceTrack:
         walls: np.ndarray,
         active: np.ndarray,
         buttons: np.ndarray,
-        colors: np.ndarray,
+        wall_colors: np.ndarray,
+        button_colors: np.ndarray,
         target: Point,
         spawn: Point,
         screen_size: Point,
     ) -> None:
-        if not (walls.shape == active.shape == buttons.shape):
+        if not (
+            walls.shape
+            == active.shape
+            == buttons.shape
+            == wall_colors.shape
+            == button_colors.shape
+        ):
             raise ValueError("All map layers must be same shape.")
         self.walls = walls
         self.active = active
         self.buttons = buttons
-        self.colors = colors
+        self.wall_colors = wall_colors
+        self.button_colors = button_colors
         self.shape = walls.shape
         colors_basic = {
             0: "#ffffff",
@@ -46,7 +54,8 @@ class RaceTrack:
             deepcopy(self.walls, memo),
             deepcopy(self.active, memo),
             deepcopy(self.buttons, memo),
-            deepcopy(self.colors, memo),
+            deepcopy(self.wall_colors, memo),
+            deepcopy(self.button_colors, memo),
             deepcopy(self.target, memo),
             deepcopy(self.spawn, memo),
             deepcopy(self.screen_size, memo),
@@ -69,21 +78,21 @@ class RaceTrack:
             x, y = col * w, row * h
             active = self.active[row, col]
             wall = self.walls[row, col]
-            color_type = self.colors[row, col]
             button = self.buttons[row, col]
-            color = self.color_scheme[color_type]
             if wall != 0:
+                wall_color = self.color_scheme[self.wall_colors[row, col]]
                 pygame.draw.rect(
                     surface,
-                    color,
+                    wall_color,
                     (x, y, w + 1, h + 1),
                     0 if active else int(0.1 * min(w, h)),
                 )
             if (row, col) == self.spawn:
                 surface.blit(triangle, (x + 0.1 * w, y + 0.1 * h))
             if button:
+                button_color = self.color_scheme[self.button_colors[row, col]]
                 pygame.draw.circle(
-                    surface, color, (x + w / 2, y + h / 2), 0.3 * min(w, h)
+                    surface, button_color, (x + w / 2, y + h / 2), 0.3 * min(w, h)
                 )
                 pygame.draw.circle(
                     surface,
@@ -111,7 +120,7 @@ class RaceTrack:
             tuple[np.ndarray, np.ndarray]: A tuple containing an array of all the row numbers and an array of all the column numbers
         """
         color_mask = (
-            (self.colors == color) if color is not None else np.ones(self.shape)
+            (self.wall_colors == color) if color is not None else np.ones(self.shape)
         ).astype(int)
         active_mask = (
             (self.active == active) if active is not None else np.ones(self.shape)
@@ -148,7 +157,7 @@ class RaceTrack:
             set[Point]: A set containing the coordinates (row, col) of the buttons.
         """
         color_mask = (
-            (self.colors == color) if color is not None else np.ones(self.shape)
+            (self.button_colors == color) if color is not None else np.ones(self.shape)
         ).astype(int)
         rows, cols = np.where(self.buttons.astype(int) & color_mask)
         return set(zip(rows.astype(int), cols.astype(int)))
@@ -179,7 +188,8 @@ class RaceTrack:
             self.walls,
             self.active,
             self.buttons,
-            self.colors,
+            self.wall_colors,
+            self.button_colors,
             self.target,
             self.spawn,
             self.screen_size,
@@ -201,12 +211,14 @@ def blank_track(
     walls = np.zeros(grid_size)
     buttons = np.zeros(grid_size)
     active = np.ones(grid_size)
-    colors = np.zeros(grid_size)
+    wall_colors = np.zeros(grid_size)
+    button_colors = np.zeros(grid_size)
     return RaceTrack(
         walls,
         active,
         buttons,
-        colors,
+        wall_colors,
+        button_colors,
         (grid_size[0] - 1, grid_size[1] - 1),
         (0, 0),
         screen_size,
