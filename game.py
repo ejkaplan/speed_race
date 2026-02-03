@@ -11,9 +11,9 @@ from game_world.racetrack import RaceTrack, load_track
 from random_bot import random_move
 import traceback
 
-TRACK = load_track("./tracks/itsatrap.pkl")
+TRACK = load_track("./tracks/no_choice.pkl")
 PLAYER = random_move
-REPLAY_SPEED = 0.5  # seconds per move in the replay. (lower is faster)
+REPLAY_SPEED = 1.0  # seconds per move in the replay. (lower is faster)
 SHOW_REPLAY = True
 
 
@@ -61,7 +61,10 @@ class Game:
         try:
             action = self.player(self.pos, track_copy)
         except Exception as e:
-            return Status.DNF, f'Racer crashed with the following error message:\n{traceback.format_exc()}'
+            return (
+                Status.DNF,
+                f"Racer crashed with the following error message:\n{traceback.format_exc()}",
+            )
         time_taken = monotonic() - start_time
         self.time -= time_taken
         self.history.append(action)
